@@ -1,4 +1,3 @@
-using DemoToDoBot.BackgroundServices;
 using DemoToDoBot.Data;
 using DemoToDoBot.Services;
 using Microsoft.EntityFrameworkCore;
@@ -16,10 +15,11 @@ builder.Services.AddDbContext<BotDbContext>(options =>
 });
 
 builder.Services.AddScoped<TaskModelService>();
+builder.Services.AddScoped<UserModelService>();
 
 var token = builder.Configuration["token"];
 builder.Services.AddSingleton(new TelegramBotClient(token!));
-builder.Services.AddSingleton<IUpdateHandler,UpdateHandlerService>();
+builder.Services.AddSingleton<IUpdateHandler, UpdateHandlerService>();
 builder.Services.AddHostedService<BotBackgroundService>();
 
 var app = builder.Build();

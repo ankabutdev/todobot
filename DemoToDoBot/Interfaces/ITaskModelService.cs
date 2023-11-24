@@ -15,4 +15,8 @@ public interface ITaskModelService
     Task UpdateTaskAsync(TaskModel task);
 
     Task DeleteTaskAsync(int taskId);
+
+    Task<IEnumerable<TaskModel>> SendTasksAllUsersAsync();
+
+    Task<IEnumerable<TaskModel>> GetAllTasksAsync();
 }

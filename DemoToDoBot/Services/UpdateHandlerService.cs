@@ -9,6 +9,7 @@ public class UpdateHandlerService : IUpdateHandler
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private TaskModelService _taskService;
+    private UserModelService _userService;
 
     public UpdateHandlerService(IServiceScopeFactory scopeFactory)
     {
@@ -26,10 +27,34 @@ public class UpdateHandlerService : IUpdateHandler
         using var scope = _scopeFactory.CreateScope();
 
         _taskService = scope.ServiceProvider.GetRequiredService<TaskModelService>();
+        _userService = scope.ServiceProvider.GetRequiredService<UserModelService>();
 
         var chatId = update.Message.Chat.Id;
 
-        if (update.Message.Text == "/dailytasks")
+        var user = update.Message.From;
+
+        var users = await _userService.GetAllUsersAsync();
+
+        if (update.Message.Text == "/start")
+        {
+            if (users.Any(x => x.Id == user.Id))
+            {
+                UserModel newUser = new UserModel
+                {
+                    Username = user.Username,
+                    ChatId = chatId
+                };
+
+                await _userService.CreateTaskAsync(newUser);
+
+                await botClient.SendTextMessageAsync(chatId, "Registration successful! You can now use the bot.", cancellationToken: cancellationToken);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(chatId, "You are already registered.", cancellationToken: cancellationToken);
+            }
+        }
+        else if (update.Message.Text == "/dailytasks")
         {
             var dailyTasks = await _taskService.GetDailyTasksAsync();
             await DisplayTasks(botClient, chatId, "Daily Tasks", dailyTasks, cancellationToken);
@@ -39,15 +64,21 @@ public class UpdateHandlerService : IUpdateHandler
             var archivedTasks = await _taskService.GetArchivedTasksAsync();
             await DisplayTasks(botClient, chatId, "Archived Tasks", archivedTasks, cancellationToken);
         }
+        else if (update.Message.Text == "/createtask")
+        {
+
+        }
+        else if (update.Message.Text == "/")
+        {
+
+        }
     }
 
     private async Task DisplayTasks(ITelegramBotClient botClient, long chatId, string title, IEnumerable<TaskModel> tasks, CancellationToken token)
     {
         var message = $"{title}:\n";
-        message += tasks.Any() ? string.Join("\n", tasks.Select(t => $"- {t.Description}")) : "No tasks.";
+        message += tasks.Any() ? string.Join("\n", tasks.Select(t => $"- {t.Description} (Due: {t.DueDate})")) : "No tasks.";
 
         await botClient.SendTextMessageAsync(chatId, message, cancellationToken: token);
     }
-
-
 }

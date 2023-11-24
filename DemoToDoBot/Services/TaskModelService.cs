@@ -1,10 +1,11 @@
 ﻿using DemoToDoBot.Data;
+using DemoToDoBot.Interfaces;
 using DemoToDoBot.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace DemoToDoBot.Services;
 
-public class TaskModelService
+public class TaskModelService : ITaskModelService
 {
     private readonly BotDbContext _dbContext;
 
@@ -19,13 +20,14 @@ public class TaskModelService
         {
             Description = task.Description,
             DueDate = task.DueDate,
-            IsArchived = task.IsArchived
+            IsArchived = task.IsArchived,
+            UserId = task.UserId
         };
 
         await _dbContext.Tasks.AddAsync(taskEntity);
         await _dbContext.SaveChangesAsync();
 
-        task.Id = taskEntity.Id; // Assign the generated ID back to the TaskModel
+        task.Id = taskEntity.Id;
 
         return task;
     }
@@ -42,7 +44,10 @@ public class TaskModelService
 
     public async Task<IEnumerable<TaskModel>> GetArchivedTasksAsync()
     {
-        var archivedTaskEntities = await _dbContext.Tasks.Where(t => t.IsArchived).ToListAsync();
+        var archivedTaskEntities = await _dbContext.Tasks
+            .Where(t => t.IsArchived)
+            .ToListAsync();
+
         return archivedTaskEntities.Select(MapToTaskModel);
     }
 
@@ -70,6 +75,7 @@ public class TaskModelService
             existingTaskEntity.Description = task.Description;
             existingTaskEntity.DueDate = task.DueDate;
             existingTaskEntity.IsArchived = task.IsArchived;
+            existingTaskEntity.UserId = task.UserId;
 
             await _dbContext.SaveChangesAsync();
         }
@@ -82,7 +88,27 @@ public class TaskModelService
             Id = taskEntity.Id,
             Description = taskEntity.Description,
             DueDate = taskEntity.DueDate,
-            IsArchived = taskEntity.IsArchived
+            IsArchived = taskEntity.IsArchived,
+            UserId = taskEntity.UserId,
         };
+    }
+
+    public async Task<IEnumerable<TaskModel>> SendTasksAllUsersAsync()
+    {
+        var allUsersWithTasks = await _dbContext.Users
+            .Include(u => u.Tasks)
+            .ToListAsync();
+
+        var allTasks = allUsersWithTasks
+            .SelectMany(u => u.Tasks)
+            .ToList();
+
+        return allTasks;
+    }
+
+
+    public async Task<IEnumerable<TaskModel>> GetAllTasksAsync()
+    {
+        return await _dbContext.Tasks.ToListAsync();
     }
 }
